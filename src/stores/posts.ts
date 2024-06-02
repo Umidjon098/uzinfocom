@@ -1,5 +1,5 @@
 import { createStore, createEvent, createEffect, sample } from "effector";
-import axios from "axios";
+import axiosInstance from "../api/axios";
 
 // Define types
 interface Post {
@@ -18,30 +18,22 @@ export const deletePost = createEvent<number>();
 
 // Define effects
 export const fetchPostsFx = createEffect(async () => {
-  const response = await axios.get<Post[]>(
-    "https://jsonplaceholder.typicode.com/posts"
-  );
+  const response = await axiosInstance.get<Post[]>("/posts");
   return response.data;
 });
 
 export const addPostFx = createEffect(async (post: PostInput) => {
-  const response = await axios.post<Post>(
-    "https://jsonplaceholder.typicode.com/posts",
-    post
-  );
+  const response = await axiosInstance.post<Post>("/posts", post);
   return response.data;
 });
 
 export const updatePostFx = createEffect(async (post: Post) => {
-  const response = await axios.put<Post>(
-    `https://jsonplaceholder.typicode.com/posts/${post.id}`,
-    post
-  );
+  const response = await axiosInstance.put<Post>(`/posts/${post.id}`, post);
   return response.data;
 });
 
 export const deletePostFx = createEffect(async (id: number) => {
-  await axios.delete(`https://jsonplaceholder.typicode.com/posts/${id}`);
+  await axiosInstance.delete(`/posts/${id}`);
   return id;
 });
 
@@ -55,6 +47,21 @@ export const $posts = createStore<Post[]>([])
   .on(deletePostFx.doneData, (state, id) =>
     state.filter((post) => post.id !== id)
   );
+
+export const $loading = createStore<boolean>(false).on(
+  [
+    fetchPostsFx.pending,
+    addPostFx.pending,
+    updatePostFx.pending,
+    deletePostFx.pending,
+  ],
+  (_, pending) => pending
+);
+
+export const $error = createStore<string | null>(null).on(
+  [fetchPostsFx.fail, addPostFx.fail, updatePostFx.fail, deletePostFx.fail],
+  (_, error) => (error.error as Error).message
+);
 
 // Connect events to effects
 sample({
